@@ -31,7 +31,7 @@ curl -i -X POST 'https://open.feishu.cn/open-apis/docx/v1/documents' \
 -H 'Content-Type: application/json' \
 -H 'Authorization: Bearer <access_token>' \
 -d '{
-    "folder_token": "<folder_token>",
+    "folder_token": "<folder_token>",****
     "title": "一篇新的文档"
 }'
 ```
@@ -676,5 +676,247 @@ curl -i -X POST 'https://open.feishu.cn/open-apis/drive/v1/files/create_folder' 
     "url": "https://vq5iayk07bc.feishu.cn/drive/folder/FWK2fMleClICfodlHHWc4Mygnhb"
   },
   "msg": "success"
+}
+```
+
+### 17.插入图片
+#### 1. 创建图片 Block
+* 请求接口：
+url:https://open.feishu.cn/open-apis/docx/v1/documents/:document_id/blocks/:block_id/children
+```
+curl --location --request POST '{url}' \
+--header 'Authorization: {Authorization}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "index": 0,
+  "children": [
+    {
+      "block_type": 27,
+      "image": {}
+    }
+  ]
+}'
+```
+* 返回数据：
+```
+{
+    "code": 0,
+    "data": {
+        "children": [
+            {
+                "block_id": "doxcnEUmKKppwWrnUIcgZ2ibc9g",
+                // Image BlockID
+                "block_type": 27,
+                "image": {
+                    "height": 100,
+                    "token": "",
+                    "width": 100
+                },
+                "parent_id": "doxcnQxzmNsMl9rsJRZrCpGx71e"
+            }
+        ],
+        "client_token": "bc25a4f0-9a24-4ade-9ca2-6c1db43fa61d",
+        "document_revision_id": 7
+    },
+    "msg": ""
+}
+```
+#### 2. 上传图片素材
+url:https://open.feishu.cn/open-apis/drive/v1/medias/upload_all
+* 请求数据
+```
+curl --location --request POST '{url}' \
+--header 'Authorization: {Authorization}' \
+--header 'Content-Type: multipart/form-data; boundary=---7MA4YWxkTrZu0gW' \
+--form 'file= ' \ # 文件的二进制内容
+--form 'file_name="test.PNG"' \ # 图片名称
+--form 'parent_type="docx_image"' \ # 素材类型为 docx_image
+--form 'parent_node="doxcnEUmKKppwWrnUIcgZ2ibc9g"' \ # Image BlockID
+--form 'size="xxx"' # 图片大小
+```
+* 返回数据
+```
+{
+    "code": 0,
+    "data": {
+        "file_token": "boxbckbfvfcqEg22hAzN8Dh9gJd" // 图片素材 ID
+    },
+    "msg": "Success"
+}
+```
+##### 3. 设置图片 Block 的素材
+url:https://open.feishu.cn/open-apis/docx/v1/documents/:document_id/blocks/:block_id
+```
+url --location --request PATCH '{url}' \
+--header 'Authorization: {Authorization}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "replace_image": {
+        "token": "boxbckbfvfcqEg22hAzN8Dh9gJd" # 图片素材 ID
+    }
+}'
+```
+
+### 18. 搜索文档
+url:https://open.feishu.cn/open-apis/suite/docs-api/search/object
+* 请求数据
+```
+{
+"search_key": "项目", //是 指定搜索的关键字。
+"count": 10, //否 指定搜索返回的文件数量。取值范围为 [0,50]。
+}
+```
+* 返回数据
+```
+{
+    "code": 0,
+    "data": {
+        "docs_entities": [
+            {
+                "docs_token": "shtcnLkpxnlYksumuGNZM1abcef",
+                "docs_type": "doc",
+                "owner_id": "ou_b97fbe610114d9489ff3b501a71abcef",
+                "title": "项目进展周报"
+            } 
+        ],
+        "has_more": true,
+        "total": 59
+    },
+    "msg": "success"
+}
+```
+### 19. 获取画板内容
+* 请求：
+  curl -i -X GET 'https://open.feishu.cn/open-apis/board/v1/whiteboards/PcdvwsVkEhylj7bQ74pcOFKXnHE/nodes' \
+  -H 'Authorization: Bearer u-fqvA2wpLlaWb0CRxO1Zc4j4gmhzM4kahMo00gkE02e7y'
+* 返回数据：
+```
+{
+  "code": 0,
+  "data": {
+    "nodes": [
+      {
+        "composite_shape": {
+          "type": "round_rect"
+        },
+        "height": 80,
+        "id": "o1:20",
+        "style": {
+          "border_opacity": 100,
+          "border_style": "solid",
+          "border_width": "narrow",
+          "fill_opacity": 100
+        },
+        "text": {
+          "font_size": 14,
+          "font_weight": "regular",
+          "horizontal_align": "center",
+          "text": "c",
+          "vertical_align": "mid"
+        },
+        "type": "composite_shape",
+        "width": 120,
+        "x": -132.9912109375,
+        "y": 728.19091796875
+      },
+      {
+        "composite_shape": {
+          "type": "round_rect"
+        },
+        "height": 80,
+        "id": "o1:19",
+        "style": {
+          "border_opacity": 100,
+          "border_style": "solid",
+          "border_width": "narrow",
+          "fill_opacity": 100
+        },
+        "text": {
+          "font_size": 14,
+          "font_weight": "regular",
+          "horizontal_align": "center",
+          "text": "b",
+          "vertical_align": "mid"
+        },
+        "type": "composite_shape",
+        "width": 120,
+        "x": -132.9912109375,
+        "y": 528.19091796875
+      },
+      {
+        "height": 28.27199935913086,
+        "id": "z2:10",
+        "mind_map": {
+          "parent_id": "z2:7"
+        },
+        "style": {
+          "border_opacity": 100,
+          "border_style": "solid",
+          "border_width": "narrow",
+          "fill_opacity": 100
+        },
+        "text": {
+          "font_size": 14,
+          "font_weight": "regular",
+          "horizontal_align": "left",
+          "text": "4",
+          "vertical_align": "mid"
+        },
+        "type": "mind_map",
+        "width": 23.770000457763672,
+        "x": 633.0499877929688,
+        "y": 629.5496215820312
+      },
+      {
+        "height": 48,
+        "id": "z2:7",
+        "mind_map": {
+          "parent_id": ""
+        },
+        "style": {
+          "border_opacity": 100,
+          "border_style": "solid",
+          "border_width": "narrow",
+          "fill_opacity": 100
+        },
+        "text": {
+          "font_size": 16,
+          "font_weight": "bold",
+          "horizontal_align": "center",
+          "text": "1",
+          "vertical_align": "mid"
+        },
+        "type": "mind_map",
+        "width": 49.42399978637695,
+        "x": 523.6259765625,
+        "y": 567.4136352539062
+      },
+      {
+        "height": 28.27199935913086,
+        "id": "z2:9",
+        "mind_map": {
+          "parent_id": "z2:7"
+        },
+        "style": {
+          "border_opacity": 100,
+          "border_style": "solid",
+          "border_width": "narrow",
+          "fill_opacity": 100
+        },
+        "text": {
+          "font_size": 14,
+          "font_weight": "regular",
+          "horizontal_align": "left",
+          "text": "3",
+          "vertical_align": "mid"
+        },
+        "type": "mind_map",
+        "width": 23.770000457763672,
+        "x": 633.0499877929688,
+        "y": 577.2776489257812
+      } 
+    ]
+  },
+  "msg": ""
 }
 ```

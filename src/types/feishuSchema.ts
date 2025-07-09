@@ -27,6 +27,7 @@ export const IndexSchema = z.number().describe(
   '0 means to insert as the first content block after the title.\n' +
   'If children is empty or missing, use 0 to insert the first content block.\n' +
   'For nested blocks, index is relative to the parent block\'s children.\n' +
+  '**index must satisfy 0 ≤ index ≤ parentBlock.children.length, otherwise the API will return an error.**\n'+
   'Note: The title block itself is not part of the children array and cannot be operated on with index.' +
   'Specifies where the block should be inserted. Use 0 to insert at the beginning. ' +
   'Use get_feishu_document_blocks tool to understand document structure if unsure. ' +
@@ -85,11 +86,17 @@ export const TextStyleSchema = z.object(TextStylePropertiesSchema).optional().de
   'Text style settings. Explicitly set style properties instead of relying on Markdown syntax conversion.'
 );
 
-// 文本内容单元定义
-export const TextElementSchema = z.object({
-  text: z.string().describe('Text content. Provide plain text without markdown syntax; use style object for formatting.'),
-  style: TextStyleSchema
-});
+// 文本内容单元定义 - 支持普通文本和公式元素
+export const TextElementSchema = z.union([
+  z.object({
+    text: z.string().describe('Text content. Provide plain text without markdown syntax; use style object for formatting.'),
+    style: TextStyleSchema
+  }).describe('Regular text element with optional styling.'),
+  z.object({
+    equation: z.string().describe('Mathematical equation content. The formula or expression to display. Format: LaTeX.'),
+    style: TextStyleSchema
+  }).describe('Mathematical equation element with optional styling.')
+]);
 
 // 文本内容数组定义
 export const TextElementsArraySchema = z.array(TextElementSchema).describe(
@@ -116,12 +123,7 @@ export const CodeWrapSchema = z.boolean().optional().default(false).describe(
 
 // 文本样式段落定义 - 用于批量创建块工具
 export const TextStyleBlockSchema = z.object({
-  textStyles: z.array(
-    z.object({
-      text: z.string().describe('Text segment content. The actual text to display.'),
-      style: TextStyleSchema
-    })
-  ).describe('Array of text content objects with styles. A block can contain multiple text segments with different styles. Example: [{text:"Hello",style:{bold:true}},{text:" World",style:{italic:true}}]'),
+  textStyles: z.array(TextElementSchema).describe('Array of text content objects with styles. A block can contain multiple text segments with different styles, including both regular text and equations. Example: [{text:"Hello",style:{bold:true}},{equation:"1+2=3",style:{}}]'),
   align: z.number().optional().default(1).describe('Text alignment: 1 for left (default), 2 for center, 3 for right.'),
 });
 
@@ -148,9 +150,17 @@ export const ListBlockSchema = z.object({
 
 // 块类型枚举 - 用于批量创建块工具
 export const BlockTypeEnum = z.string().describe(
-  "Block type (required). Supports: 'text', 'code', 'heading', 'list', as well as 'heading1' through 'heading9'. " +
-  "For headings, we recommend using 'heading' with level property, but 'heading1'-'heading9' are also supported."
+  "Block type (required). Supports: 'text', 'code', 'heading', 'list', 'image', as well as 'heading1' through 'heading9'. " +
+  "For headings, we recommend using 'heading' with level property, but 'heading1'-'heading9' are also supported. " +
+  "For images, use 'image' to create empty image blocks that can be filled later. " +
+  "For text blocks, you can include both regular text and equation elements in the same block."
 );
+
+// 图片块内容定义 - 用于批量创建块工具
+export const ImageBlockSchema = z.object({
+  width: z.number().optional().describe('Image width in pixels (optional). If not provided, default width will be used.'),
+  height: z.number().optional().describe('Image height in pixels (optional). If not provided, default height will be used.'),
+});
 
 // 块配置定义 - 用于批量创建块工具
 export const BlockConfigSchema = z.object({
@@ -160,6 +170,7 @@ export const BlockConfigSchema = z.object({
     z.object({ code: CodeBlockSchema }).describe("Code block options. Used when blockType is 'code'."),
     z.object({ heading: HeadingBlockSchema }).describe("Heading block options. Used with both 'heading' and 'headingN' formats."),
     z.object({ list: ListBlockSchema }).describe("List block options. Used when blockType is 'list'."),
+    z.object({ image: ImageBlockSchema }).describe("Image block options. Used when blockType is 'image'. Creates empty image blocks."),
     z.record(z.any()).describe("Fallback for any other block options")
   ]).describe('Options for the specific block type. Provide the corresponding options object based on blockType.'),
 });
@@ -188,19 +199,41 @@ export const FolderNameSchema = z.string().describe(
   'Folder name (required). The name for the new folder to be created.'
 );
 
-// 排序方式参数定义
-export const OrderBySchema = z.string().optional().default('EditedTime').describe(
-  'Order by field (optional). Specifies how to sort the file list. Available values: ' +
-  '"EditedTime" (default), "CreatedTime", "Name". For user-friendly display, case insensitive.'
-);
-
-// 排序方向参数定义
-export const DirectionSchema = z.string().optional().default('DESC').describe(
-  'Sort direction (optional). Specifies the sort order. Available values: ' +
-  '"DESC" (default) for descending order, "ASC" for ascending order. Case sensitive.'
-);
-
 // 搜索关键字参数定义
 export const SearchKeySchema = z.string().describe(
   'Search keyword (required). The keyword to search for in documents.'
 );
+
+// 图片路径或URL参数定义
+export const ImagePathOrUrlSchema = z.string().describe(
+  'Image path or URL (required). Supports the following formats:\n' +
+  '1. Local file absolute path: e.g., "C:\\path\\to\\image.jpg"\n' +
+  '2. HTTP/HTTPS URL: e.g., "https://example.com/image.png"\n' +
+  'The tool will automatically detect the format and handle accordingly.'
+);
+
+// 图片文件名参数定义
+export const ImageFileNameSchema = z.string().optional().describe(
+  'Image file name (optional). If not provided, a default name will be generated based on the source. ' +
+  'Should include the file extension, e.g., "image.png" or "photo.jpg".'
+);
+
+// 图片宽度参数定义
+export const ImageWidthSchema = z.number().optional().describe(
+  'Image width in pixels (optional). If not provided, the original image width will be used.'
+);
+
+// 图片高度参数定义
+export const ImageHeightSchema = z.number().optional().describe(
+  'Image height in pixels (optional). If not provided, the original image height will be used.'
+);
+
+// 画板ID参数定义
+export const WhiteboardIdSchema = z.string().describe(
+  'Whiteboard ID (required). This is the token value from the board.token field when getting document blocks.\n' +
+  'When you find a block with block_type: 43, the whiteboard ID is located in board.token field.\n' +
+  'Example: "EPJKwvY5ghe3pVbKj9RcT2msnBX"'
+);
+
+// 文档标题参数定义
+export const DocumentTitleSchema = z.string().describe('Document title (required). This will be displayed in the Feishu document list and document header.');
